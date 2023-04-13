@@ -1,16 +1,27 @@
 // ----------------------------------------------------------------------------
-// 'JBarreHCalTreeMakerProcessor.cc'
+// 'JBarrelHCalTreeMakerProcessor.cc'
 // Derek Anderson
 // 04.13.2023
 //
 //
-// Template for this file generated with eicmkplugin.py
+// A JANA plugin to construct a tree of BHCal tiles
+// for training a ML clusterizer.
 // ----------------------------------------------------------------------------
 
 // user includes
-#include "JBarreHCalTreeMakerProcessor.h"
+#include "JBarrelHCalTreeMakerProcessor.h"
 // JANA includes
 #include <services/rootfile/RootFile_service.h>
+// DD4HEP includes
+#include "DD4hep/Objects.h"
+#include "DD4hep/Detector.h"
+#include "DD4hep/DetElement.h"
+// DDRec includes
+#include "DDRec/Surface.h"
+#include "DDRec/SurfaceManager.h"
+#include "DDRec/CellIDPositionConverter.h"
+// DDG4 includes
+#include "DDG4/Geant4Data.h"
 
 using namespace std;
 
@@ -18,7 +29,7 @@ using namespace std;
 extern "C" {
   void InitPlugin(JApplication *app) {
     InitJANAPlugin(app);
-    app -> Add(new JBarreHCalTreeMakerProcessor);
+    app -> Add(new JBarrelHCalTreeMakerProcessor);
   }
 }
 
@@ -26,12 +37,12 @@ extern "C" {
 
 // inherited methods ----------------------------------------------------------
 
-void JBarreHCalTreeMakerProcessor::InitWithGlobalRootLock(){
+void JBarrelHCalTreeMakerProcessor::InitWithGlobalRootLock(){
 
   //  create directory in output file
   auto rootfile_svc = GetApplication() -> GetService<RootFile_service>();
   auto rootfile     = rootfile_svc     -> GetHistFile();
-  rootfile -> mkdir("JBarreHCalTreeMaker") -> cd();
+  rootfile -> mkdir("JBarrelHCalTreeMaker") -> cd();
 
   // reset tree variables
   ResetVariables();
@@ -46,7 +57,7 @@ void JBarreHCalTreeMakerProcessor::InitWithGlobalRootLock(){
 
 
 
-void JBarreHCalTreeMakerProcessor::ProcessSequential(const shared_ptr<const JEvent>& event) {
+void JBarrelHCalTreeMakerProcessor::ProcessSequential(const shared_ptr<const JEvent>& event) {
 
   // Fill histograms here. e.g.
   // for( auto hit : rawhits()  ) hEraw->Fill(  hit->getEnergy());
@@ -58,7 +69,7 @@ void JBarreHCalTreeMakerProcessor::ProcessSequential(const shared_ptr<const JEve
 
 
 
-void JBarreHCalTreeMakerProcessor::FinishWithGlobalRootLock() {
+void JBarrelHCalTreeMakerProcessor::FinishWithGlobalRootLock() {
 
   /* finalizing done here */
   return;
@@ -69,10 +80,10 @@ void JBarreHCalTreeMakerProcessor::FinishWithGlobalRootLock() {
 
 // private methods ------------------------------------------------------------
 
-void JBarreHCalTreeMakerProcessor::InitializeDecoder() {
+void JBarrelHCalTreeMakerProcessor::InitializeDecoder() {
 
   dd4hep::Detector                     &detector  = dd4hep::Detector::getInstance();
-  dd4hep::rec::CellIDPositionConverter  converter = new dd4hep::rec::CellIDPositionConverter(detector);
+  dd4hep::rec::CellIDPositionConverter *converter = new dd4hep::rec::CellIDPositionConverter(detector);
   try {
 
     // grab bhcal
@@ -85,7 +96,7 @@ void JBarreHCalTreeMakerProcessor::InitializeDecoder() {
     cout << "full list: " << " " << m_decoder -> fieldDescription() << endl;
   } catch (...) {
       cout <<"2nd: "  << m_decoder << endl;
-      m_log- > error("PANIC: readout class not in the output");
+      //m_log -> error("PANIC: readout class not in the output");
       throw runtime_error("PANIC: readout class is not in the output!");
   }
   return;
@@ -94,7 +105,7 @@ void JBarreHCalTreeMakerProcessor::InitializeDecoder() {
 
 
 
-void JBarreHCalTreeMakerProcessor::InitializeTrees() {
+void JBarrelHCalTreeMakerProcessor::InitializeTrees() {
 
   // initialize event tree
   m_tEventTree = new TTree("event_tree", "event_tree");
@@ -119,7 +130,7 @@ void JBarreHCalTreeMakerProcessor::InitializeTrees() {
   m_tClusterTree -> Branch("cluster_BHCAL_E",       m_bhcalClustEne,      "cluster_BHCAL_E[cluster_BHCAL_N]/F");
   m_tClusterTree -> Branch("cluster_BHCAL_Ncells",  m_bhcalClustNumCells, "cluster_BHCAL_Ncells[cluster_BHCAL_N]/I");
   m_tClusterTree -> Branch("cluster_BHCAL_Eta",     m_bhcalClustEta,      "cluster_BHCAL_Eta[cluster_BHCAL_N]/F");
-  m_tClusterTree -> Branch("cluster_BHCAL_Phi",     m_bhcalCLustPhi,      "cluster_BHCAL_Phi[cluster_BHCAL_N]/F");
+  m_tClusterTree -> Branch("cluster_BHCAL_Phi",     m_bhcalClustPhi,      "cluster_BHCAL_Phi[cluster_BHCAL_N]/F");
   m_tClusterTree -> Branch("cluster_BECAL_N",      &m_numClustBECal,      "cluster_BECAL_N/I");
   m_tClusterTree -> Branch("cluster_BECAL_E",       m_becalClustEne,      "cluster_BECAL_E[cluster_BECAL_N]/F");
   m_tClusterTree -> Branch("cluster_BECAL_Ncells",  m_becalClustNumCells, "cluster_BECAL_Ncells[cluster_BECAL_N]/I");
@@ -131,7 +142,7 @@ void JBarreHCalTreeMakerProcessor::InitializeTrees() {
 
 
 
-void JBarreHCalTreeMakerProcessor::InitializeMaps() {
+void JBarrelHCalTreeMakerProcessor::InitializeMaps() {
 
   return;
 
@@ -139,7 +150,7 @@ void JBarreHCalTreeMakerProcessor::InitializeMaps() {
 
 
 
-void JBarreHCalTreeMakerProcessor::ResetVariables() {
+void JBarrelHCalTreeMakerProcessor::ResetVariables() {
 
   // reset tile variables
   m_numTiles = 0;

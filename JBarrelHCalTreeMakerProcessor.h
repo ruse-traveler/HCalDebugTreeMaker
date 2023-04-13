@@ -1,5 +1,5 @@
 // ----------------------------------------------------------------------------
-// JBarreHCalTreeMaker.h
+// 'JBarrelHCalTreeMaker.h'
 // Derek Anderson
 // 04.13.2023
 //
@@ -14,19 +14,31 @@
 #include <JANA/JEventProcessor.h>
 #include <JANA/JEventProcessorSequentialRoot.h>
 // EDM includes
-#include <edm4eic/CalorimeterHit.h>
 #include <edm4eic/ReconstructedParticle.h>
+#include <edm4eic/CalorimeterHit.h>
 #include <edm4eic/ProtoCluster.h>
 #include <edm4eic/Cluster.h>
+// ACTS includes
+#include "Acts/Utilities/Logger.hpp"
+#include "Acts/Surfaces/Surface.hpp"
+#include "Acts/Definitions/Units.hpp"
+#include "Acts/Definitions/Common.hpp"
+#include <Acts/Surfaces/DiscSurface.hpp>
+#include "Acts/Geometry/TrackingGeometry.hpp"
+#include <Acts/Material/IMaterialDecorator.hpp>
+#include "Acts/Plugins/DD4hep/DD4hepDetectorElement.hpp"
+// misc includes
+#include <spdlog/spdlog.h>
+#include <services/log/Log_service.h>
 
 // global constants
 static const size_t NTiles    = 15360;
-static const size_t NMaxPar   = 1000;
+static const size_t NMaxPars  = 1000;
 static const size_t NMaxClust = 20000;
 
 
 
-class JBarreHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
+class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
 
   private:
 
@@ -41,7 +53,7 @@ class JBarreHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
     TTree *m_tClusterTree;
 
     // tile members (for event tree)
-    uint64_t m_numTiles
+    uint64_t m_numTiles;
     float    m_tileEne[NTiles];
     float    m_tileTime[NTiles];
     float    m_tileTilt[NTiles];
@@ -87,7 +99,7 @@ class JBarreHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
   public:
 
     // ctor
-    JBarreHCalTreeMakerProcessor() { SetTypeName(NAME_OF_THIS); }
+    JBarrelHCalTreeMakerProcessor() { SetTypeName(NAME_OF_THIS); }
 
     // inhereited methods
     void InitWithGlobalRootLock() override;
