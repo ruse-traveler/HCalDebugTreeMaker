@@ -7,15 +7,20 @@
 // for training a ML clusterizer.
 // ----------------------------------------------------------------------------
 
+// c includes
+#include <cmath>
+#include <vector>
+#include <cstdlib>
 // root includes
-#include <TTree.h>
-#include <TFile.h>
+#include "TTree.h"
+#include "TFile.h"
+#include "TDirectory.h"
 // JANA includes
 #include <JANA/JEventProcessor.h>
 #include <JANA/JEventProcessorSequentialRoot.h>
 // EDM includes
-#include <edm4eic/ReconstructedParticle.h>
-#include <edm4eic/CalorimeterHit.h>
+#include <edm4hep/MCParticle.h>
+#include <edm4hep/SimCalorimeterHit.h>
 #include <edm4eic/ProtoCluster.h>
 #include <edm4eic/Cluster.h>
 // ACTS includes
@@ -43,14 +48,19 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
   private:
 
     // Data objects we will need from JANA e.g.
-    PrefetchT<edm4eic::ReconstructedParticle> genParticles  = {this, "GeneratedParticles"};
-    PrefetchT<edm4eic::CalorimeterHit>        bhcalRecHits  = {this, "HcalBarrelRecHits"};
+    PrefetchT<edm4hep::MCParticle>            genParticles  = {this, "GeneratedParticles"};
+    PrefetchT<edm4hep::SimCalorimeterHit>     bhcalRecHits  = {this, "HcalBarrelRecHits"};
     PrefetchT<edm4eic::Cluster>               bhcalClusters = {this, "HcalBarrelClusters"};
     PrefetchT<edm4eic::Cluster>               becalClusters = {this, "EcalBarrelSciGlassClusters"};
 
     // i/o members
-    TTree *m_tEventTree;
-    TTree *m_tClusterTree;
+    TTree      *m_tEventTree;
+    TTree      *m_tClusterTree;
+    TDirectory *m_dPluginDir;
+
+    // vector of hit tiles (for matching to clusters)
+    std::vector<uint64_t> m_vecTileID;
+    std::vector<uint64_t> m_vecTileIsMatched;
 
     // tile members (for event tree)
     uint64_t m_numTiles;
@@ -58,6 +68,7 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
     float    m_tileTime[NTiles];
     float    m_tileTilt[NTiles];
     float    m_tileBarycenter[NTiles];
+    uint64_t m_tileCellID[NTiles];
     uint64_t m_tileTrueID[NTiles];
     short    m_tileIndex[NTiles];
     short    m_tileTower[NTiles];
