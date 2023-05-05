@@ -18,23 +18,29 @@
 // JANA includes
 #include <JANA/JEventProcessor.h>
 #include <JANA/JEventProcessorSequentialRoot.h>
-// EDM includes
-#include <edm4hep/MCParticle.h>
-#include <edm4hep/SimCalorimeterHit.h>
-#include <edm4eic/ProtoCluster.h>
+// EDM4EIC includes
 #include <edm4eic/Cluster.h>
-// ACTS includes
-#include "Acts/Utilities/Logger.hpp"
-#include "Acts/Surfaces/Surface.hpp"
-#include "Acts/Definitions/Units.hpp"
-#include "Acts/Definitions/Common.hpp"
-#include <Acts/Surfaces/DiscSurface.hpp>
-#include "Acts/Geometry/TrackingGeometry.hpp"
-#include <Acts/Material/IMaterialDecorator.hpp>
-#include "Acts/Plugins/DD4hep/DD4hepDetectorElement.hpp"
+#include <edm4eic/TrackerHit.h>
+#include <edm4eic/ProtoCluster.h>
+#include <edm4eic/RawTrackerHit.h>
+#include <edm4eic/CalorimeterHit.h>
+#include <edm4eic/ReconstructedParticle.h>
 // misc includes
 #include <spdlog/spdlog.h>
 #include <services/log/Log_service.h>
+#include <services/rootfile/RootFile_service.h>
+#include <services/geometry/dd4hep/JDD4hep_service.h>
+// DD4HEP includes
+#include "DD4hep/Objects.h"
+#include "DD4hep/Detector.h"
+#include "DD4hep/DetElement.h"
+#include "DD4hep/IDDescriptor.h"
+// DDRec includes
+#include "DDRec/Surface.h"
+#include "DDRec/SurfaceManager.h"
+#include "DDRec/CellIDPositionConverter.h"
+// DDG4 includes
+#include "DDG4/Geant4Data.h"
 
 // global constants
 static const size_t NTiles    = 15360;
@@ -48,8 +54,8 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
   private:
 
     // Data objects we will need from JANA e.g.
-    PrefetchT<edm4hep::MCParticle>            genParticles  = {this, "GeneratedParticles"};
-    PrefetchT<edm4hep::SimCalorimeterHit>     bhcalRecHits  = {this, "HcalBarrelRecHits"};
+    PrefetchT<edm4eic::ReconstructedParticle> genParticles  = {this, "GeneratedParticles"};
+    PrefetchT<edm4eic::CalorimeterHit>        bhcalRecHits  = {this, "HcalBarrelRecHits"};
     PrefetchT<edm4eic::Cluster>               bhcalClusters = {this, "HcalBarrelClusters"};
     PrefetchT<edm4eic::Cluster>               becalClusters = {this, "EcalBarrelSciGlassClusters"};
 

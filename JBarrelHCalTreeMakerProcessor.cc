@@ -12,18 +12,6 @@
 
 // user includes
 #include "JBarrelHCalTreeMakerProcessor.h"
-// JANA includes
-#include <services/rootfile/RootFile_service.h>
-// DD4HEP includes
-#include "DD4hep/Objects.h"
-#include "DD4hep/Detector.h"
-#include "DD4hep/DetElement.h"
-// DDRec includes
-#include "DDRec/Surface.h"
-#include "DDRec/SurfaceManager.h"
-#include "DDRec/CellIDPositionConverter.h"
-// DDG4 includes
-#include "DDG4/Geant4Data.h"
 
 // the following just makes this a JANA plugin
 extern "C" {
@@ -70,17 +58,17 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
   for (auto par : genParticles()) {
 
     // grab particle information
-    const int   parStatus  = par -> getGeneratorStatus();
-    const float parEne     = par -> getEnergy();
-    const float parPx      = par -> getMomentum().x;
-    const float parPy      = par -> getMomentum().y;
-    const float parPz      = par -> getMomentum().z;
-    const float parPt      = std::sqrt((parPx * parPx) + (parPy * parPy));
-    const float parEta     = -1. * std::log(std::tan(std::atan2(parPt, parPz) / 2.));
-    const float parPhi     = std::atan2(parPy, parPx);
+    const int   parType  = par -> getType();
+    const float parEne   = par -> getEnergy();
+    const float parPx    = par -> getMomentum().x;
+    const float parPy    = par -> getMomentum().y;
+    const float parPz    = par -> getMomentum().z;
+    const float parPt    = std::sqrt((parPx * parPx) + (parPy * parPy));
+    const float parEta   = -1. * std::log(std::tan(std::atan2(parPt, parPz) / 2.));
+    const float parPhi   = std::atan2(parPy, parPx);
 
     // only accept truth particles
-    const bool isTruth = (parStatus == 1);
+    const bool isTruth = (parType == 1);
     if (!isTruth) continue;
 
     // set output variables
@@ -101,22 +89,17 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     const float    eHit  = hit -> getEnergy();
 
     // get hit indices
-    const auto hitIndex  = m_decoder -> get(hitID, 1);
+    const auto hitTile   = m_decoder -> get(hitID, 3);
     const auto hitTower  = m_decoder -> get(hitID, 2);
-    const auto hitSector = m_decoder -> get(hitID, 3);
+    const auto hitSector = m_decoder -> get(hitID, 1);
 
     // grab hit time
     const double maxTime = std::numeric_limits<double>::max();
-    double       hitTime = maxTime;
 
-    const auto bhcalHitContribs = hit -> getContributions();
-    for (auto contrib : bhcalHitContribs) {
-      const double contribTime     = contrib.getTime();
-      const bool   timeLessThanMax = (contribTime <= maxTime);
-      if (timeLessThanMax) {
-        hitTime = contribTime;
-      }
-    }  // end contribution loop
+    double hitTime = hit -> getTime();
+    if (hitTime > maxTime) {
+      hitTime = maxTime;
+    }
 
     // add to vectors
     m_vecTileID.push_back(hitID);
@@ -129,7 +112,7 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     m_tileBarycenter[nHit] = -1.;
     m_tileCellID[nHit]     = hitID;
     m_tileTrueID[nHit]     = 0;  // FIXME this should be set to associated truth particle
-    m_tileIndex[nHit]      = hitIndex;
+    m_tileIndex[nHit]      = hitTile;
     m_tileTower[nHit]      = hitTower;
     m_tileSector[nHit]     = hitSector;
     ++nHit;
@@ -222,21 +205,28 @@ void JBarrelHCalTreeMakerProcessor::FinishWithGlobalRootLock() {
 
 void JBarrelHCalTreeMakerProcessor::InitializeDecoder() {
 
-  dd4hep::Detector                     &detector  = dd4hep::Detector::getInstance();
-  dd4hep::rec::CellIDPositionConverter *converter = new dd4hep::rec::CellIDPositionConverter(detector);
+  // grab geometry service
+  auto geom_svc = GetApplication() -> GetService<JDD4hep_service>();
+
+  // make sure readout is available
+  dd4hep::IDDescriptor idDescriptor;
   try {
-
-    // grab bhcal
-    m_decoder = detector.readout("HcalBarrelHits").idSpec().decoder();
-
-    // grab tiles
-    auto tile   = m_decoder -> index("tile");
-    auto tower  = m_decoder -> index("tower");
-    auto sector = m_decoder -> index("sector");
-    std::cout << "full list: " << " " << m_decoder -> fieldDescription() << std::endl;
+    idDescriptor  = geom_svc -> detector() -> readout("HcalBarrelHits").idSpec();
   } catch (...) {
-      std::cout <<"2nd: "  << m_decoder << std::endl;
-      throw std::runtime_error("PANIC: readout class is not in the output!");
+    throw std::runtime_error("PANIC: readout class is not in output!");
+  }
+
+  // grab decoder
+  short indexTile   = 0;
+  short indexTower  = 0;
+  short indexSector = 0;
+  try {
+    m_decoder   = geom_svc  -> detector() -> readout("HcalBarrelHits").idSpec().decoder();
+    indexTile   = m_decoder -> index("tile");
+    indexTower  = m_decoder -> index("tower");
+    indexSector = m_decoder -> index("sector");
+  } catch (...) {
+    throw std::runtime_error("PANIC: something went wrong grabbing the decoder!");
   }
   return;
 
