@@ -157,24 +157,31 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     ++nClustHCal;
   }  // end bhcal cluster loop
 
-  // loop over becal clusters
+
+
+  // fill becal cluster branches if needed
   size_t nClustECal = 0;
-  for (auto beClust : becalClusters()) {
+  if (AddBECalClusters) {
 
-    // grab cluster info
-    const double nHitsClustECal = beClust -> getNhits();
-    const double eClustECal     = beClust -> getEnergy();
-    const double fClustECal     = beClust -> getIntrinsicPhi();
-    const double tClustECal     = beClust -> getIntrinsicTheta();
-    const double hClustECal     = -1. * std::log(std::tan(tClustECal / 2.));
+    // grab becal clusters and loop over them
+    auto becalClusters = event -> Get<edm4eic::Cluster>(m_becalClustName.data());
+    for (auto beClust : becalClusters) {
 
-    // set output variables
-    m_becalClustNumCells[nClustECal] = nHitsClustECal;
-    m_becalClustEne[nClustECal]      = eClustECal;
-    m_becalClustEta[nClustECal]      = hClustECal;
-    m_becalClustPhi[nClustECal]      = fClustECal;
-    ++nClustECal;
-  }  // end becal cluster loop
+      // grab cluster info
+      const double nHitsClustECal = beClust -> getNhits();
+      const double eClustECal     = beClust -> getEnergy();
+      const double fClustECal     = beClust -> getIntrinsicPhi();
+      const double tClustECal     = beClust -> getIntrinsicTheta();
+      const double hClustECal     = -1. * std::log(std::tan(tClustECal / 2.));
+
+      // set output variables
+      m_becalClustNumCells[nClustECal] = nHitsClustECal;
+      m_becalClustEne[nClustECal]      = eClustECal;
+      m_becalClustEta[nClustECal]      = hClustECal;
+      m_becalClustPhi[nClustECal]      = fClustECal;
+      ++nClustECal;
+    }  // end becal cluster loop
+  }  // end if (AddBECalClusters)
 
   // set output event variables
   m_numTiles      = nHit;
@@ -206,7 +213,7 @@ void JBarrelHCalTreeMakerProcessor::FinishWithGlobalRootLock() {
 void JBarrelHCalTreeMakerProcessor::InitializeDecoder() {
 
   // grab geometry service
-  auto geom_svc = GetApplication() -> GetService<JDD4hep_service>();
+  auto geom_svc = GetApplication() -> GetService<DD4hep_service>();
 
   // make sure readout is available
   dd4hep::IDDescriptor idDescriptor;
@@ -267,11 +274,15 @@ void JBarrelHCalTreeMakerProcessor::InitializeTrees() {
   m_tClusterTree -> Branch("cluster_BHCAL_Ncells",  m_bhcalClustNumCells, "cluster_BHCAL_Ncells[cluster_BHCAL_N]/I");
   m_tClusterTree -> Branch("cluster_BHCAL_Eta",     m_bhcalClustEta,      "cluster_BHCAL_Eta[cluster_BHCAL_N]/F");
   m_tClusterTree -> Branch("cluster_BHCAL_Phi",     m_bhcalClustPhi,      "cluster_BHCAL_Phi[cluster_BHCAL_N]/F");
-  m_tClusterTree -> Branch("cluster_BECAL_N",      &m_numClustBECal,      "cluster_BECAL_N/I");
-  m_tClusterTree -> Branch("cluster_BECAL_E",       m_becalClustEne,      "cluster_BECAL_E[cluster_BECAL_N]/F");
-  m_tClusterTree -> Branch("cluster_BECAL_Ncells",  m_becalClustNumCells, "cluster_BECAL_Ncells[cluster_BECAL_N]/I");
-  m_tClusterTree -> Branch("cluster_BECAL_Eta",     m_becalClustEta,      "cluster_BECAL_Eta[cluster_BECAL_N]/F");
-  m_tClusterTree -> Branch("cluster_BECAL_Phi",     m_becalClustPhi,      "cluster_BECAL_Phi[cluster_BECAL_N]/F");
+
+  // add BECal branches if needed
+  if (AddBECalClusters) {
+    m_tClusterTree -> Branch("cluster_BECAL_N",      &m_numClustBECal,      "cluster_BECAL_N/I");
+    m_tClusterTree -> Branch("cluster_BECAL_E",       m_becalClustEne,      "cluster_BECAL_E[cluster_BECAL_N]/F");
+    m_tClusterTree -> Branch("cluster_BECAL_Ncells",  m_becalClustNumCells, "cluster_BECAL_Ncells[cluster_BECAL_N]/I");
+    m_tClusterTree -> Branch("cluster_BECAL_Eta",     m_becalClustEta,      "cluster_BECAL_Eta[cluster_BECAL_N]/F");
+    m_tClusterTree -> Branch("cluster_BECAL_Phi",     m_becalClustPhi,      "cluster_BECAL_Phi[cluster_BECAL_N]/F");
+  }
   return;
 
 } // end 'InitializeTrees()'

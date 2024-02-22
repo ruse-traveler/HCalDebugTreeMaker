@@ -29,7 +29,7 @@
 #include <spdlog/spdlog.h>
 #include <services/log/Log_service.h>
 #include <services/rootfile/RootFile_service.h>
-#include <services/geometry/dd4hep/JDD4hep_service.h>
+#include <services/geometry/dd4hep/DD4hep_service.h>
 // DD4HEP includes
 #include "DD4hep/Objects.h"
 #include "DD4hep/Detector.h"
@@ -47,17 +47,22 @@ static const size_t NTiles    = 15360;
 static const size_t NMaxPars  = 1000;
 static const size_t NMaxClust = 20000;
 
+// calculation parameters
+static const bool AddBECalClusters = false;
+
 
 
 class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
 
   private:
 
-    // Data objects we will need from JANA e.g.
+    // data objects we will definitely need from JANA
     PrefetchT<edm4eic::ReconstructedParticle> genParticles  = {this, "GeneratedParticles"};
     PrefetchT<edm4eic::CalorimeterHit>        bhcalRecHits  = {this, "HcalBarrelRecHits"};
     PrefetchT<edm4eic::Cluster>               bhcalClusters = {this, "HcalBarrelClusters"};
-    PrefetchT<edm4eic::Cluster>               becalClusters = {this, "EcalBarrelSciGlassClusters"};
+
+    // name of BECal cluster collection (only used if needed)
+    std::string m_becalClustName = "EcalBarrelClusters";
 
     // i/o members
     TTree      *m_tEventTree;
