@@ -38,6 +38,9 @@ void JBarrelHCalTreeMakerProcessor::InitWithGlobalRootLock(){
   // reset tree variables
   ResetVariables();
 
+  // initialize event index
+  m_evtIndex = 0;
+
   // initialize output trees and tile maps
   InitializeDecoder();
   InitializeTrees();
@@ -54,7 +57,7 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
   ResetVariables();
 
   // loop over generated particles
-  size_t nPar = 0;
+  size_t nGenPar = 0;
   for (auto par : genParticles()) {
 
     // grab particle information
@@ -72,10 +75,10 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     if (!isTruth) continue;
 
     // set output variables
-    m_parEne.push_back( parEne );
-    m_parEta.push_back( parEta );
-    m_parPhi.push_back( parPhi );
-    ++nPar;
+    m_genParEne.push_back( parEne );
+    m_genParEta.push_back( parEta );
+    m_genParPhi.push_back( parPhi );
+    ++nGenPar;
   }  // end particle loop
 
   // loop over bhcal hits
@@ -186,10 +189,10 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
   }  // end if (AddBECalClusters)
 
   // set output event variables
-  m_numTiles      = nHit;
-  m_numParticles  = nPar;
-  m_numClustBHCal = nClustHCal;
-  m_numClustBECal = nClustECal;
+  m_numTiles        = nHit;
+  m_numGenParticles = nGenPar;
+  m_numClustBHCal   = nClustHCal;
+  m_numClustBECal   = nClustECal;
 
   // fill output trees
   m_tEventTree   -> Fill();
@@ -251,31 +254,104 @@ void JBarrelHCalTreeMakerProcessor::InitializeTrees() {
   // initialize event tree
   m_tEventTree = new TTree("event_tree", "event_tree");
   m_tEventTree -> SetDirectory(m_dPluginDir);
-  m_tEventTree -> Branch("cell_BHCAL_N",        &m_numTiles, "cell_BHCAL_N/I");
+  m_tEventTree -> Branch("evt_index",           &m_evtIndex,        "evt_index/I");
+  m_tEventTree -> Branch("cell_BHCAL_N",        &m_numTiles,        "cell_BHCAL_N/I");
+  m_tEventTree -> Branch("gen_N",               &m_numGenParticles, "gen_N/I");
+  m_tEventTree -> Branch("mc_N",                &m_numMCParticles,  "mc_N/I");
   m_tEventTree -> Branch("cell_BHCAL_E",        &m_tileEne);
-  m_tEventTree -> Branch("cell_BHCAL_T",        &m_tileTime);
-  m_tEventTree -> Branch("cell_BHCAL_tilt",     &m_tileTilt);
-  m_tEventTree -> Branch("cell_BHCAL_gravCent", &m_tileBarycenter);
+  m_tEventTree -> Branch("cell_BHCAL_PosX",     &m_tilePosX);
+  m_tEventTree -> Branch("cell_BHCAL_PosY",     &m_tilePosY);
+  m_tEventTree -> Branch("cell_BHCAL_PosZ",     &m_tilePosZ);
+  m_tEventTree -> Branch("cell_BHCAL_Time",     &m_tileTime);
+  m_tEventTree -> Branch("cell_BHCAL_Tilt",     &m_tileTilt);
+  m_tEventTree -> Branch("cell_BHCAL_GravCent", &m_tileBarycenter);
   m_tEventTree -> Branch("cell_BHCAL_ID",       &m_tileCellID);
-  m_tEventTree -> Branch("cell_BHCAL_tile",     &m_tileIndex);
-  m_tEventTree -> Branch("cell_BHCAL_tower",    &m_tileTower);
-  m_tEventTree -> Branch("cell_BHCAL_sector",   &m_tileSector);
-  m_tEventTree -> Branch("cell_BHCAL_clusIDA",  &m_tileClustIDA);
-  m_tEventTree -> Branch("cell_BHCAL_clusIDB",  &m_tileClustIDB);
-  m_tEventTree -> Branch("cell_BHCAL_trueID",   &m_tileTrueID);
+  m_tEventTree -> Branch("cell_BHCAL_Tile",     &m_tileIndex);
+  m_tEventTree -> Branch("cell_BHCAL_Tower",    &m_tileTower);
+  m_tEventTree -> Branch("cell_BHCAL_Sector",   &m_tileSector);
+  m_tEventTree -> Branch("cell_BHCAL_ClusIDA",  &m_tileClustIDA);
+  m_tEventTree -> Branch("cell_BHCAL_ClusIDB",  &m_tileClustIDB);
+  m_tEventTree -> Branch("cell_BHCAL_TrueID",   &m_tileTrueID);
+  m_tEventTree -> Branch("gen_Type",            &m_genParType);
+  m_tEventTree -> Branch("gen_PDG",             &m_genParPDG);
+  m_tEventTree -> Branch("gen_E",               &m_genParEne);
+  m_tEventTree -> Branch("gen_Phi",             &m_genParPhi);
+  m_tEventTree -> Branch("gen_Eta",             &m_genParEta);
+  m_tEventTree -> Branch("gen_Mass",            &m_genParMass);
+  m_tEventTree -> Branch("mc_GenStatus",        &m_mcParGenStatus);
+  m_tEventTree -> Branch("mc_SimStatus",        &m_mcParSimStatus);
+  m_tEventTree -> Branch("mc_PDG",              &m_mcParPDG);
+  m_tEventTree -> Branch("mc_E",                &m_mcParEne);
+  m_tEventTree -> Branch("mc_Phi",              &m_mcParPhi);
+  m_tEventTree -> Branch("mc_Eta",              &m_mcParEta);
+  m_tEventTree -> Branch("mc_Mass",             &m_mcParMass);
+  m_tEventTree -> Branch("mc_StartVx",          &m_mcParStartVx);
+  m_tEventTree -> Branch("mc_StartVy",          &m_mcParStartVy);
+  m_tEventTree -> Branch("mc_StartVz",          &m_mcParStartVz);
+  m_tEventTree -> Branch("mc_StopVx",           &m_mcParStopVx);
+  m_tEventTree -> Branch("mc_StopVy",           &m_mcParStopVy);
+  m_tEventTree -> Branch("mc_StopVz",           &m_mcParStopVz);
+  m_tEventTree -> Branch("mc_Time",             &m_mcParTime);
 
   // initialize cluster tree
   m_tClusterTree = new TTree("cluster_tree", "cluster_tree");
   m_tClusterTree -> SetDirectory(m_dPluginDir);
-  m_tClusterTree -> Branch("mc_N",                 &m_numParticles, "mc_N/I");
-  m_tClusterTree -> Branch("mc_E",                 &m_parEne);
-  m_tClusterTree -> Branch("mc_Phi",               &m_parPhi);
-  m_tClusterTree -> Branch("mc_Eta",               &m_parEta);
-  m_tClusterTree -> Branch("cluster_BHCAL_N",      &m_numClustBHCal);
-  m_tClusterTree -> Branch("cluster_BHCAL_E",      &m_bhcalClustEne);
-  m_tClusterTree -> Branch("cluster_BHCAL_Ncells", &m_bhcalClustNumCells);
-  m_tClusterTree -> Branch("cluster_BHCAL_Eta",    &m_bhcalClustEta);
-  m_tClusterTree -> Branch("cluster_BHCAL_Phi",    &m_bhcalClustPhi);
+  m_tClusterTree -> Branch("evt_index",                    &m_evtIndex,      "evt_index/I");
+  m_tClusterTree -> Branch("cluster_BHCAL_N",              &m_numClustBHCal, "cluster_BHCAL_N/I");
+  m_tClusterTree -> Branch("cluster_BHCAL_index",          &m_bhcalClustIndex);
+  m_tClusterTree -> Branch("cluster_BHCAL_E",              &m_bhcalClustEne);
+  m_tClusterTree -> Branch("cluster_BHCAL_NCells",         &m_bhcalClustNumCells);
+  m_tClusterTree -> Branch("cluster_BHCAL_Eta",            &m_bhcalClustEta);
+  m_tClusterTree -> Branch("cluster_BHCAL_Phi",            &m_bhcalClustPhi);
+  m_tClusterTree -> Branch("cluster_BHCAL_NTile",          &m_numTileInClust);
+  m_tClusterTree -> Branch("cluster_BHCAL_NAssoc",         &m_numMCParAssocToClust);
+  m_tClusterTree -> Branch("cluster_BHCAL_NContrib",       &m_numMCParContribToClust);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileClustIndex", &m_tileInClustClustIndex);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileE",          &m_tileInClustEne);
+  m_tClusterTree -> Branch("cluster_BHCAL_TilePosX",       &m_tileInClustPosX);
+  m_tClusterTree -> Branch("cluster_BHCAL_TilePosY",       &m_tileInClustPosY);
+  m_tClusterTree -> Branch("cluster_BHCAL_TilePosZ",       &m_tileInClustPosZ);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileTime",       &m_tileInClustTime);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileTilt",       &m_tileInClustTilt);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileGravCent",   &m_tileInClustBarycenter);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileCellID",     &m_tileInClustCellID);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileTrueID",     &m_tileInClustTrueID);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileTilID",      &m_tileInClustIndex);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileTwrID",      &m_tileInClustTower);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileSecID",      &m_tileInClustSector);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileClustIDA",   &m_tileInClustClustIDA);
+  m_tClusterTree -> Branch("cluster_BHCAL_TileClustIDB",   &m_tileInClustClustIDB);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocClustIndex", &m_mcParAssocToClustClustIndex);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocGenStat",   &m_mcParAssocToClustGenStatus);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocSimStat",   &m_mcParAssocToClustSimStatus);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocPDG",       &m_mcParAssocToClustPDG);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocE",         &m_mcParAssocToClustEne);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocPhi",       &m_mcParAssocToClustPhi);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocEta",       &m_mcParAssocToClustEta);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocMass",      &m_mcParAssocToClustMass);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocStartVx",   &m_mcParAssocToClustStartVx);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocStartVy",   &m_mcParAssocToClustStartVy);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocStartVz",   &m_mcParAssocToClustStartVz);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocStopVx",    &m_mcParAssocToClustStopVx);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocStopVy",    &m_mcParAssocToClustStopVy);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocStopVz",    &m_mcParAssocToClustStopVz);
+  m_tClusterTree -> Branch("cluster_BHCAL_AssocTime",      &m_mcParAssocToClustTime);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribClustIndex", &m_mcParContribToClustClustIndex);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribGenStat", &m_mcParContribToClustGenStatus);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribSimStat", &m_mcParContribToClustSimStatus);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribPDG",     &m_mcParContribToClustPDG);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribE",       &m_mcParContribToClustEne);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribPhi",     &m_mcParContribToClustPhi);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribEta",     &m_mcParContribToClustEta);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribMass",    &m_mcParContribToClustMass);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribStartVx", &m_mcParContribToClustStartVx);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribStartVy", &m_mcParContribToClustStartVy);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribStartVz", &m_mcParContribToClustStartVz);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribStopVx",  &m_mcParContribToClustStopVx);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribStopVy",  &m_mcParContribToClustStopVy);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribStopVz",  &m_mcParContribToClustStopVz);
+  m_tClusterTree -> Branch("cluster_BHCAL_ContribTime",    &m_mcParContribToClustTime);
+
 
   // add BECal branches if needed
   if (AddBECalClusters) {
@@ -306,9 +382,12 @@ void JBarrelHCalTreeMakerProcessor::ResetVariables() {
   m_vecTileID.clear();
   m_vecTileIsMatched.clear();
 
-  // reset tile variables
+  // reset event tile variables
   m_numTiles = 0;
   m_tileEne.clear();
+  m_tilePosX.clear();
+  m_tilePosY.clear();
+  m_tilePosZ.clear();
   m_tileTime.clear();
   m_tileTilt.clear();
   m_tileBarycenter.clear();
@@ -320,19 +399,95 @@ void JBarrelHCalTreeMakerProcessor::ResetVariables() {
   m_tileClustIDA.clear();
   m_tileClustIDB.clear();
 
-  // reset particle variables
-  m_numParticles = 0;
-  m_parEne.clear();
-  m_parPhi.clear();
-  m_parEta.clear();
+  // reset event gen particle variables
+  m_numGenParticles = 0;
+  m_genParType.clear();
+  m_genParPDG.clear();
+  m_genParEne.clear();
+  m_genParPhi.clear();
+  m_genParEta.clear();
+  m_genParMass.clear();
 
-  // reset bhcal/becal cluster variables
+  // reset event mc particle variables
+  m_numMCParticles = 0;
+  m_mcParGenStatus.clear();
+  m_mcParSimStatus.clear();
+  m_mcParPDG.clear();
+  m_mcParEne.clear();
+  m_mcParPhi.clear();
+  m_mcParEta.clear();
+  m_mcParMass.clear();
+  m_mcParStartVx.clear();
+  m_mcParStartVy.clear();
+  m_mcParStartVz.clear();
+  m_mcParStopVx.clear();
+  m_mcParStopVy.clear();
+  m_mcParStopVz.clear();
+  m_mcParTime.clear();
+
+  // reset bhcal cluster variables
   m_numClustBHCal = 0;
   m_numClustBECal = 0;
   m_bhcalClustNumCells.clear();
   m_bhcalClustEne.clear();
   m_bhcalClustEta.clear();
   m_bhcalClustPhi.clear();
+  m_numTileInClust.clear();
+  m_numMCParContribToClust.clear();
+  m_numMCParAssocToClust.clear();
+
+  // reset bhcal tiles in cluster variables
+  m_tileInClustClustIndex.clear();
+  m_tileInClustEne.clear();
+  m_tileInClustPosX.clear();
+  m_tileInClustPosY.clear();
+  m_tileInClustPosZ.clear();
+  m_tileInClustTime.clear();
+  m_tileInClustTilt.clear();
+  m_tileInClustBarycenter.clear();
+  m_tileInClustCellID.clear();
+  m_tileInClustTrueID.clear();
+  m_tileInClustIndex.clear();
+  m_tileInClustTower.clear();
+  m_tileInClustSector.clear();
+  m_tileInClustClustIDA.clear();
+  m_tileInClustClustIDB.clear();
+
+  // reset mc particle associated to cluster variables
+  m_mcParAssocToClustClustIndex.clear();
+  m_mcParAssocToClustGenStatus.clear();
+  m_mcParAssocToClustSimStatus.clear();
+  m_mcParAssocToClustPDG.clear();
+  m_mcParAssocToClustEne.clear();
+  m_mcParAssocToClustPhi.clear();
+  m_mcParAssocToClustEta.clear();
+  m_mcParAssocToClustMass.clear();
+  m_mcParAssocToClustStartVx.clear();
+  m_mcParAssocToClustStartVy.clear();
+  m_mcParAssocToClustStartVz.clear();
+  m_mcParAssocToClustStopVx.clear();
+  m_mcParAssocToClustStopVy.clear();
+  m_mcParAssocToClustStopVz.clear();
+  m_mcParAssocToClustTime.clear();
+
+  // reset mc particle contributing to cluster variables
+  m_mcParContribToClustClustIndex.clear();
+  m_mcParContribToClustGenStatus.clear();
+  m_mcParContribToClustSimStatus.clear();
+  m_mcParContribToClustPDG.clear();
+  m_mcParContribToClustEne.clear();
+  m_mcParContribToClustPhi.clear();
+  m_mcParContribToClustEta.clear();
+  m_mcParContribToClustMass.clear();
+  m_mcParContribToClustStartVx.clear();
+  m_mcParContribToClustStartVy.clear();
+  m_mcParContribToClustStartVz.clear();
+  m_mcParContribToClustStopVx.clear();
+  m_mcParContribToClustStopVy.clear();
+  m_mcParContribToClustStopVz.clear();
+  m_mcParContribToClustTime.clear();
+
+  // reset becal cluster variables
   m_becalClustNumCells.clear();
   m_becalClustEne.clear();
   m_becalClustEta.clear();
@@ -340,59 +495,5 @@ void JBarrelHCalTreeMakerProcessor::ResetVariables() {
   return;
 
 }  // end 'ResetVariables()'
-
-
-
-void JBarrelHCalTreeMakerProcessor::ResizeEvtTiles(const size_t nTiles) {
-
-  m_tileEne.resize(nTiles);
-  m_tileTime.resize(nTiles);
-  m_tileTilt.resize(nTiles);
-  m_tileBarycenter.resize(nTiles);
-  m_tileCellID.resize(nTiles);
-  m_tileTrueID.resize(nTiles);
-  m_tileIndex.resize(nTiles);
-  m_tileTower.resize(nTiles);
-  m_tileSector.resize(nTiles);
-  m_tileClustIDA.resize(nTiles);
-  m_tileClustIDB.resize(nTiles);
-  return;
-
-}  // end 'ResizeEvtTiles(size_t)'
-
-
-
-void JBarrelHCalTreeMakerProcessor::ResizeEvtPars(const size_t nPars) {
-
-  m_parEne.resize(nPars);
-  m_parPhi.resize(nPars);
-  m_parEta.resize(nPars);
-  return;
-
-}  // end 'ResizeEvtPars(size_t)'
-
-
-
-void JBarrelHCalTreeMakerProcessor::ResizeBHCalClusts(const size_t nBHCalClust) {
-
-  m_bhcalClustNumCells.resize(nBHCalClust);
-  m_bhcalClustEne.resize(nBHCalClust);
-  m_bhcalClustEta.resize(nBHCalClust);
-  m_bhcalClustPhi.resize(nBHCalClust);
-  return;
-
-}  // end 'ResizeBHCalClusts(size_t)'
-
-
-
-void JBarrelHCalTreeMakerProcessor::ResizeBECalClusts(const size_t nBECalClust) {
-
-  m_becalClustNumCells.resize(nBECalClust);
-  m_becalClustEne.resize(nBECalClust);
-  m_becalClustEta.resize(nBECalClust);
-  m_becalClustPhi.resize(nBECalClust);
-  return;
-
-}  // end 'ResizeBECalClusts(size_t)'
 
 // end ------------------------------------------------------------------------
