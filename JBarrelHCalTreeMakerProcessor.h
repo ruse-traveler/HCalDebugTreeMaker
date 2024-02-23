@@ -12,9 +12,9 @@
 #include <vector>
 #include <cstdlib>
 // root includes
-#include "TTree.h"
-#include "TFile.h"
-#include "TDirectory.h"
+#include <TTree.h>
+#include <TFile.h>
+#include <TDirectory.h>
 // JANA includes
 #include <JANA/JEventProcessor.h>
 #include <JANA/JEventProcessorSequentialRoot.h>
@@ -74,42 +74,61 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
     std::vector<uint64_t> m_vecTileIsMatched;
 
     // tile members (for event tree)
-    uint64_t m_numTiles;
-    float    m_tileEne[NTiles];
-    float    m_tileTime[NTiles];
-    float    m_tileTilt[NTiles];
-    float    m_tileBarycenter[NTiles];
-    uint64_t m_tileCellID[NTiles];
-    uint64_t m_tileTrueID[NTiles];
-    short    m_tileIndex[NTiles];
-    short    m_tileTower[NTiles];
-    short    m_tileSector[NTiles];
-    short    m_tileClustIDA[NTiles];
-    short    m_tileClustIDB[NTiles];
+    uint64_t              m_numTiles;
+    std::vector<float>    m_tileEne;
+    std::vector<float>    m_tileTime;
+    std::vector<float>    m_tileTilt;
+    std::vector<float>    m_tileBarycenter;
+    std::vector<uint64_t> m_tileCellID;
+    std::vector<uint64_t> m_tileTrueID;
+    std::vector<short>    m_tileIndex;
+    std::vector<short>    m_tileTower;
+    std::vector<short>    m_tileSector;
+    std::vector<short>    m_tileClustIDA;
+    std::vector<short>    m_tileClustIDB;
+    /* TODO add
+     *   - x, y, z 
+     *   - hit branches for clusters
+     */
 
     // particle members (for cluster tree)
-    uint64_t m_numParticles;
-    float    m_parEne[NMaxPars];
-    float    m_parPhi[NMaxPars];
-    float    m_parEta[NMaxPars];
+    uint64_t           m_numParticles;
+    std::vector<float> m_parEne;
+    std::vector<float> m_parPhi;
+    std::vector<float> m_parEta;
+    /* TODO add
+     *   - PDG
+     *   - mass
+     *   - MCParticles w/
+     *     + PDG
+     *     + generator, simulator
+     *     + energy, eta, phi, mass
+     *   - particle branches for clusters
+     *     + those sitting in associations
+     *     + those connected via contributions
+     */
 
     // bhcal cluster members (for cluster tree)
-    uint64_t m_numClustBHCal;
-    uint64_t m_bhcalClustNumCells[NMaxClust];
-    float    m_bhcalClustEne[NMaxClust];
-    float    m_bhcalClustEta[NMaxClust];
-    float    m_bhcalClustPhi[NMaxClust];
+    uint64_t              m_numClustBHCal;
+    std::vector<uint64_t> m_bhcalClustNumCells;
+    std::vector<float>    m_bhcalClustEne;
+    std::vector<float>    m_bhcalClustEta;
+    std::vector<float>    m_bhcalClustPhi;
+    /* TODO add
+     *   - above branches
+     *   - time
+     */
 
     // becal cluster members (for cluster tree)
-    uint64_t m_numClustBECal;
-    uint64_t m_becalClustNumCells[NMaxClust];
-    float    m_becalClustEne[NMaxClust];
-    float    m_becalClustEta[NMaxClust];
-    float    m_becalClustPhi[NMaxClust];
+    uint64_t              m_numClustBECal;
+    std::vector<uint64_t> m_becalClustNumCells;
+    std::vector<float>    m_becalClustEne;
+    std::vector<float>    m_becalClustEta;
+    std::vector<float>    m_becalClustPhi;
 
     // utility members
-    double                 m_tileTilts[NTiles];
-    double                 m_tileBarycenters[NTiles];
+    std::vector<double>    m_tileTilts;
+    std::vector<double>    m_tileBarycenters;
     dd4hep::BitFieldCoder* m_decoder;
 
     // private methods
@@ -117,6 +136,10 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
     void InitializeTrees();
     void InitializeMaps();
     void ResetVariables();
+    void ResizeEvtTiles(const size_t nTiles);
+    void ResizeEvtPars(const size_t nPars);
+    void ResizeBHCalClusts(const size_t nBHCalClust);
+    void ResizeBECalClusts(const size_t nBECalClust);
 
   public:
 
