@@ -181,6 +181,7 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
 
     // mc particle contributing to cluster members (for cluster tree)
     std::vector<uint64_t> m_mcParContribToClustClustIndex;
+    std::vector<uint64_t> m_mcParContribToClustCellID;
     std::vector<int32_t>  m_mcParContribToClustGenStat;
     std::vector<int32_t>  m_mcParContribToClustSimStat;
     std::vector<int32_t>  m_mcParContribToClustPDG;
@@ -213,9 +214,10 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
     dd4hep::BitFieldCoder* m_decoder;
 
     // private methods
-    void InitializeDecoder();
-    void InitializeTrees();
-    void ResetVariables();
+    void   InitializeDecoder();
+    void   InitializeTrees();
+    void   ResetVariables();
+    double GetTime(const double tIn);
 
 };
 

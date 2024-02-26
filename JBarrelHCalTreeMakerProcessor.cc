@@ -10,8 +10,12 @@
 // Derived from code by Frederike Bock (thanks!!)
 // ----------------------------------------------------------------------------
 
+// c++ utilities
+#include <iostream>
 // root libraries
 #include <Math/Vector4D.h>
+// datamodel types
+#include <edm4hep/CaloHitContribution.h>
 // processor definition
 #include "JBarrelHCalTreeMakerProcessor.h"
 
@@ -124,14 +128,6 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     const auto    hitTower  = m_decoder -> get(hitID, 2);
     const auto    hitSector = m_decoder -> get(hitID, 1);
 
-    // grab hit time
-    const double maxTime = std::numeric_limits<double>::max();
-
-    double hitTime = hit -> getTime();
-    if (hitTime > maxTime) {
-      hitTime = maxTime;
-    }
-
     // add to maps
     m_mapTileIndexToID.insert( std::pair<int64_t, int64_t>(nHit, hitID) );
     m_mapTileIDToIsMatched.insert( std::pair<int64_t, bool>(hitID, false) );
@@ -142,7 +138,7 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     m_tilePosX.push_back( hit -> getPosition().x );
     m_tilePosY.push_back( hit -> getPosition().y );
     m_tilePosZ.push_back( hit -> getPosition().z );
-    m_tileTime.push_back( hitTime );
+    m_tileTime.push_back( GetTime(hit -> getTime()) );
     m_tileCellID.push_back( hitID );
     m_tileTrueID.push_back( -1 );
     m_tileIndex.push_back( hitTile );
@@ -167,20 +163,12 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     const auto bhcalClustHits = bhClust -> getHits();
 
     // associate each hit, contributing particle with corresponding cluster
-    int64_t nHitsInClust = 0;
+    int64_t nHitsInClust    = 0;
+    int64_t nContribToClust = 0;
     for (auto clustHit : bhcalClustHits) {
 
       // get hit ID
       const uint64_t clustHitID = clustHit.getCellID();
-
-      // set max possible time
-      const double maxTime = std::numeric_limits<double>::max();
-
-      // grab hit time
-      double hitTime = clustHit.getTime();
-      if (hitTime > maxTime) {
-        hitTime = maxTime;
-      }
 
       // check if tile was hit
       bool    isMatched  = false;
@@ -207,14 +195,56 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
       const auto hitTower  = m_decoder -> get(clustHitID, 2);
       const auto hitSector = m_decoder -> get(clustHitID, 1);
 
-      /* loop over sim hits here */
+      // get contributing particles
+      for (auto simHit : bhcalSimHits()) {
+
+        // identify sim hit based on cell ID
+        const bool isSameCell = (clustHitID == simHit -> getCellID());
+        if (!isSameCell) continue;
+
+        // loop over hit contributions
+        const auto contribs = simHit -> getContributions();
+        for (auto contrib : contribs) {
+
+          // grab contributing particle
+          auto mcPar = contrib.getParticle();
+
+          // grab particle kinematics
+          ROOT::Math::PxPyPzM4D<float> pMC(
+            mcPar.getMomentum().x,
+            mcPar.getMomentum().y,
+            mcPar.getMomentum().z,
+            mcPar.getMass()
+          );
+
+          // set output variables
+          m_mcParContribToClustClustIndex.push_back( nClustHCal );
+          m_mcParContribToClustCellID.push_back( clustHitID );
+          m_mcParContribToClustGenStat.push_back( mcPar.getGeneratorStatus() );
+          m_mcParContribToClustSimStat.push_back( mcPar.getSimulatorStatus() );
+          m_mcParContribToClustPDG.push_back( mcPar.getPDG() );
+          m_mcParContribToClustEne.push_back( pMC.E() );
+          m_mcParContribToClustPhi.push_back( pMC.Phi() );
+          m_mcParContribToClustEta.push_back( pMC.Eta() );
+          m_mcParContribToClustMass.push_back( mcPar.getMass() );
+          m_mcParContribToClustStartVx.push_back( mcPar.getVertex().x );
+          m_mcParContribToClustStartVx.push_back( mcPar.getVertex().y );
+          m_mcParContribToClustStartVy.push_back( mcPar.getVertex().z );
+          m_mcParContribToClustStopVx.push_back( mcPar.getEndpoint().x );
+          m_mcParContribToClustStopVx.push_back( mcPar.getEndpoint().y );
+          m_mcParContribToClustStopVy.push_back( mcPar.getEndpoint().z );
+          m_mcParContribToClustTime.push_back( mcPar.getTime() );
+          ++nContribToClust;
+        }  // end contribution loop
+      }  // end sim hit loop
 
       // set output variables
+      m_tileInClustClustIndex.push_back( nClustHCal );
       m_tileInClustEne.push_back( clustHit.getEnergy() );
       m_tileInClustPosX.push_back( clustHit.getPosition().x );
       m_tileInClustPosY.push_back( clustHit.getPosition().y );
       m_tileInClustPosZ.push_back( clustHit.getPosition().z );
-      m_tileInClustTime.push_back( hitTime );
+      m_tileInClustTime.push_back( GetTime(clustHit.getTime()) );
       m_tileInClustCellID.push_back( clustHitID );
       m_tileInClustTrueID.push_back( -1 );
       m_tileInClustIndex.push_back( hitTile );
@@ -229,6 +259,7 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     m_bhcalClustIndex.push_back( nClustHCal );
     m_bhcalClustNumCells.push_back( bhClust -> getNhits() );
     m_bhcalClustNumTileInClust.push_back( nHitsInClust );
+    m_bhcalClustNumMCParContribToClust.push_back( nContribToClust );
     m_bhcalClustEne.push_back( bhClust -> getEnergy() );
     m_bhcalClustEta.push_back( hClustHCal );
     m_bhcalClustPhi.push_back( bhClust -> getIntrinsicPhi() );
@@ -425,6 +456,7 @@ void JBarrelHCalTreeMakerProcessor::InitializeTrees() {
   m_tClusterTree -> Branch("HClustAssocStopVz",       &m_mcParAssocToClustStopVz);
   m_tClusterTree -> Branch("HClustAssocTime",         &m_mcParAssocToClustTime);
   m_tClusterTree -> Branch("HClustContribClustIndex", &m_mcParContribToClustClustIndex);
+  m_tClusterTree -> Branch("HClustContribCellID",     &m_mcParContribToClustCellID);
   m_tClusterTree -> Branch("HClustContribGenStat",    &m_mcParContribToClustGenStat);
   m_tClusterTree -> Branch("HClustContribSimStat",    &m_mcParContribToClustSimStat);
   m_tClusterTree -> Branch("HClustContribPDG",        &m_mcParContribToClustPDG);
@@ -574,6 +606,7 @@ void JBarrelHCalTreeMakerProcessor::ResetVariables() {
 
   // reset mc particle contributing to cluster variables
   m_mcParContribToClustClustIndex.clear();
+  m_mcParContribToClustCellID.clear();
   m_mcParContribToClustGenStat.clear();
   m_mcParContribToClustSimStat.clear();
   m_mcParContribToClustPDG.clear();
@@ -601,5 +634,21 @@ void JBarrelHCalTreeMakerProcessor::ResetVariables() {
   return;
 
 }  // end 'ResetVariables()'
+
+
+
+double JBarrelHCalTreeMakerProcessor::GetTime(const double tIn) {
+
+  // set max time
+  const double maxTime = std::numeric_limits<double>::max();
+
+  // if above, return max
+  double tOut = tIn;
+  if (tOut > maxTime) {
+    tOut = maxTime;
+  }
+  return tOut;
+
+}  // end 'GetTime(double)'
 
 // end ------------------------------------------------------------------------
