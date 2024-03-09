@@ -123,10 +123,11 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
   for (auto hit : bhcalRecHits()) {
 
     // get hit indices
+    //   - FIXME make more flexible
     const int64_t hitID     = hit -> getCellID();
-    const auto    hitTile   = m_decoder -> get(hitID, 3);
-    const auto    hitTower  = m_decoder -> get(hitID, 2);
-    const auto    hitSector = m_decoder -> get(hitID, 1);
+    const auto    hitTile   = m_decoder -> get(hitID, "eta");
+    const auto    hitTower  = m_decoder -> get(hitID, "phi");
+    const int     hitSector = 0;
 
     // add to maps
     m_mapTileIndexToID.insert( std::pair<int64_t, int64_t>(nHit, hitID) );
@@ -162,6 +163,45 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     // grab consituent hits
     const auto bhcalClustHits = bhClust -> getHits();
 
+    // loop over associated mc particles
+    int64_t nAssocToClust = 0;
+    for (auto assoc : bhcalAssocs()) {
+
+
+      // consider only current cluster
+      const bool isSameClust = (assoc -> getRecID() == nClustHCal);
+      if (!isSameClust) continue;
+
+      // grab associated particle
+      auto mcPar = assoc -> getSim();
+
+      // grab particle kinematics
+      ROOT::Math::PxPyPzM4D<float> pMC(
+        mcPar.getMomentum().x,
+        mcPar.getMomentum().y,
+        mcPar.getMomentum().z,
+        mcPar.getMass()
+      );
+
+      // set output variables
+      m_mcParAssocToClustClustIndex.push_back( nClustHCal );
+      m_mcParAssocToClustGenStat.push_back( mcPar.getGeneratorStatus() );
+      m_mcParAssocToClustSimStat.push_back( mcPar.getSimulatorStatus() );
+      m_mcParAssocToClustPDG.push_back( mcPar.getPDG() );
+      m_mcParAssocToClustEne.push_back( pMC.E() );
+      m_mcParAssocToClustPhi.push_back( pMC.Phi() );
+      m_mcParAssocToClustEta.push_back( pMC.Eta() );
+      m_mcParAssocToClustMass.push_back( mcPar.getMass() );
+      m_mcParAssocToClustStartVx.push_back( mcPar.getVertex().x );
+      m_mcParAssocToClustStartVx.push_back( mcPar.getVertex().y );
+      m_mcParAssocToClustStartVy.push_back( mcPar.getVertex().z );
+      m_mcParAssocToClustStopVx.push_back( mcPar.getEndpoint().x );
+      m_mcParAssocToClustStopVx.push_back( mcPar.getEndpoint().y );
+      m_mcParAssocToClustStopVy.push_back( mcPar.getEndpoint().z );
+      m_mcParAssocToClustTime.push_back( mcPar.getTime() );
+      ++nAssocToClust;
+    }  // end association loop
+
     // associate each hit, contributing particle with corresponding cluster
     int64_t nHitsInClust    = 0;
     int64_t nContribToClust = 0;
@@ -191,9 +231,10 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
       }
 
       // get hit indices
-      const auto hitTile   = m_decoder -> get(clustHitID, 3);
-      const auto hitTower  = m_decoder -> get(clustHitID, 2);
-      const auto hitSector = m_decoder -> get(clustHitID, 1);
+      //   - FIXME make more flexible
+      const auto hitTile   = m_decoder -> get(clustHitID, "eta");
+      const auto hitTower  = m_decoder -> get(clustHitID, "phi");
+      const int  hitSector = 0;
 
       // get contributing particles
       for (auto simHit : bhcalSimHits()) {
@@ -259,6 +300,7 @@ void JBarrelHCalTreeMakerProcessor::ProcessSequential(const std::shared_ptr<cons
     m_bhcalClustIndex.push_back( nClustHCal );
     m_bhcalClustNumCells.push_back( bhClust -> getNhits() );
     m_bhcalClustNumTileInClust.push_back( nHitsInClust );
+    m_bhcalClustNumMCParAssocToClust.push_back( nAssocToClust );
     m_bhcalClustNumMCParContribToClust.push_back( nContribToClust );
     m_bhcalClustEne.push_back( bhClust -> getEnergy() );
     m_bhcalClustEta.push_back( hClustHCal );
@@ -327,27 +369,26 @@ void JBarrelHCalTreeMakerProcessor::FinishWithGlobalRootLock() {
 
 void JBarrelHCalTreeMakerProcessor::InitializeDecoder() {
 
-  // grab geometry service
-  auto geom_svc = GetApplication() -> GetService<DD4hep_service>();
+  // grab detector
+  auto detector = GetApplication() -> GetService<DD4hep_service>() -> detector();
 
   // make sure readout is available
-  dd4hep::IDDescriptor idDescriptor;
+  dd4hep::IDDescriptor descriptor;
   try {
-    idDescriptor  = geom_svc -> detector() -> readout("HcalBarrelHits").idSpec();
-  } catch (...) {
+    descriptor  = detector -> readout("HcalBarrelHits").idSpec();
+  } catch (const std::runtime_error &err) {
     throw std::runtime_error("PANIC: readout class is not in output!");
   }
 
-  // grab decoder
-  short indexTile   = 0;
-  short indexTower  = 0;
-  short indexSector = 0;
+  // grab decoder and test
+  //   - FIXME make more flexible
+  short indexTile  = 0;
+  short indexTower = 0;
   try {
-    m_decoder   = geom_svc  -> detector() -> readout("HcalBarrelHits").idSpec().decoder();
-    indexTile   = m_decoder -> index("tile");
-    indexTower  = m_decoder -> index("tower");
-    indexSector = m_decoder -> index("sector");
-  } catch (...) {
+    m_decoder  = descriptor.decoder();
+    indexTile  = m_decoder -> index("eta");
+    indexTower = m_decoder -> index("phi");
+  } catch (const std::runtime_error &err) {
     throw std::runtime_error("PANIC: something went wrong grabbing the decoder!");
   }
   return;

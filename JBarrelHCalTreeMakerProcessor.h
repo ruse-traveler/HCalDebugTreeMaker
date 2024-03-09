@@ -27,6 +27,7 @@
 #include <edm4eic/RawTrackerHit.h>
 #include <edm4eic/CalorimeterHit.h>
 #include <edm4eic/ReconstructedParticle.h>
+#include <edm4eic/MCRecoClusterParticleAssociation.h>
 #include <edm4hep/MCParticle.h>
 #include <edm4hep/SimCalorimeterHit.h>
 // eicrecon services
@@ -64,11 +65,12 @@ class JBarrelHCalTreeMakerProcessor : public JEventProcessorSequentialRoot {
   private:
 
     // data objects we will definitely need from JANA
-    PrefetchT<edm4hep::MCParticle>            mcParticles   = {this, "MCParticles"};
-    PrefetchT<edm4eic::ReconstructedParticle> genParticles  = {this, "GeneratedParticles"};
-    PrefetchT<edm4hep::SimCalorimeterHit>     bhcalSimHits  = {this, "HcalBarrelHits"};
-    PrefetchT<edm4eic::CalorimeterHit>        bhcalRecHits  = {this, "HcalBarrelRecHits"};
-    PrefetchT<edm4eic::Cluster>               bhcalClusters = {this, "HcalBarrelClusters"};
+    PrefetchT<edm4hep::MCParticle>                       mcParticles   = {this, "MCParticles"};
+    PrefetchT<edm4eic::ReconstructedParticle>            genParticles  = {this, "GeneratedParticles"};
+    PrefetchT<edm4hep::SimCalorimeterHit>                bhcalSimHits  = {this, "HcalBarrelHits"};
+    PrefetchT<edm4eic::CalorimeterHit>                   bhcalRecHits  = {this, "HcalBarrelRecHits"};
+    PrefetchT<edm4eic::Cluster>                          bhcalClusters = {this, "HcalBarrelClusters"};
+    PrefetchT<edm4eic::MCRecoClusterParticleAssociation> bhcalAssocs   = {this, "HcalBarrelClusterAssociations"};
 
     // name of BECal cluster collection (only used if needed)
     std::string m_becalClustName = "EcalBarrelClusters";
