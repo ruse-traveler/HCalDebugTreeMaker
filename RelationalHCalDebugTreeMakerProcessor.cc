@@ -78,7 +78,7 @@ void RelationalHCalDebugTreeMakerProcessor::ProcessSequential(const std::shared_
     const auto clustHits = cluster -> getHits();
 
     // associate each cell, contributing particle with corresponding cluster
-    int64_t nHitsInClust    = 0;
+    int64_t nCellsInClust    = 0;
     int64_t nContribToClust = 0;
     for (auto clustHit : clustHits) {
 
@@ -106,11 +106,12 @@ void RelationalHCalDebugTreeMakerProcessor::ProcessSequential(const std::shared_
       }  // end sim hit loop
 
       FillCellVariables( clustHit, nClust );
-      ++nHitsInClust;
+      ++nCellsInClust;
 
     }  // end cell loop
 
-    FillClusterVariables( cluster, nClust );
+
+    FillClusterVariables( cluster, nClust, nCellsInClust, nAssocToClust, nContribToClust );
     ++nClust;
 
   }  // end cluster loop
@@ -309,14 +310,22 @@ void RelationalHCalDebugTreeMakerProcessor::ResetVariables() {
 
 
 
-void RelationalHCalDebugTreeMakerProcessor::FillClusterVariables(const edm4eic::Cluster* clust, const int64_t iClust) {
+void RelationalHCalDebugTreeMakerProcessor::FillClusterVariables(
+  const edm4eic::Cluster* clust,
+  const int64_t iClust,
+  const int64_t nCells,
+  const int64_t nAssoc,
+  const int64_t nContrib
+) {
 
   // calculate eta
   const double theta = clust -> getIntrinsicTheta();
   const double eta   = GetEta(theta);
 
   m_clustIndex.push_back( iClust );
-  m_clustNCells.push_back( clust -> getNhits() );
+  m_clustNCells.push_back( nCells );
+  m_clustNAssoc.push_back( nAssoc );
+  m_clustNContrib.push_back( nContrib );
   m_clustEne.push_back( clust -> getEnergy() );
   m_clustEta.push_back( eta );
   m_clustPhi.push_back( clust -> getIntrinsicPhi() );

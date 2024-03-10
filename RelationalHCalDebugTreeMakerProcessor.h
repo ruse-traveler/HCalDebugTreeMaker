@@ -94,7 +94,7 @@ class RelationalHCalDebugTreeMakerProcessor: public JEventProcessorSequentialRoo
     void   InitializeDecoder();
     void   InitializeTree();
     void   ResetVariables();
-    void   FillClusterVariables(const edm4eic::Cluster* clust, const int64_t iClust);
+    void   FillClusterVariables(const edm4eic::Cluster* clust, const int64_t iClust, const int64_t nCells, const int64_t nAssoc, const int64_t nContrib);
     void   FillCellVariables(const edm4eic::CalorimeterHit cell, const int64_t iClust);
     void   FillAssocVariables(const edm4hep::MCParticle mc, const int64_t iClust);
     void   FillContribVariables(const edm4hep::MCParticle mc, const int64_t iClust, const int64_t cellID);
