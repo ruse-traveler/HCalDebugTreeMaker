@@ -7,9 +7,9 @@ Both takes an edm4hep file as input, and both produce a single TTree as output.
     calorimeter clusters, cells, generated particles, and MC particles (i.e. the truth record).
  - `RelationalHCalDebugTreeMaker:` a tree which contains select information from all hadronic
     clusters and the following:
-     (1) the cells comprising those clusters,
-     (2) the MC particles *associated* to those clusters, and
-     (3) the MC particles *contributing* to those clusters.
+     1. the cells comprising those clusters,
+     2. the MC particles *associated* to those clusters, and
+     3. the MC particles *contributing* to those clusters.
 
 In the case of the latter, belonging relationships between clusters and cells/particles are encoded
 in indices running parallel to the relevant branches.
